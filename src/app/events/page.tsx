@@ -41,6 +41,7 @@ export default function EventsPage() {
       fetchEvents(tier)
     } else {
       // For demo purposes, show free events
+      setUserTier('free')
       fetchEvents('free')
     }
   }, [isSignedIn, user])
@@ -55,6 +56,8 @@ export default function EventsPage() {
       // Get all tiers up to and including the user's tier
       const allowedTiers = tierOrder.slice(0, userTierIndex + 1)
       
+      console.log(`User tier: ${tier}, Allowed tiers: ${allowedTiers.join(', ')}`)
+      
       const { data, error } = await supabase
         .from('events')
         .select('*')
@@ -65,6 +68,7 @@ export default function EventsPage() {
         throw error
       }
 
+      console.log(`Fetched ${data?.length || 0} events for tier ${tier}`)
       setEvents(data || [])
     } catch (err) {
       console.error('Error fetching events:', err)
@@ -74,18 +78,7 @@ export default function EventsPage() {
     }
   }
 
-  const handleTierUpgrade = async (newTier: UserTier) => {
-    if (!isSignedIn) return
-    
-    try {
-      // In a real app, this would update Clerk metadata
-      // For demo purposes, we'll just update local state
-      setUserTier(newTier)
-      fetchEvents(newTier)
-    } catch (err) {
-      console.error('Error upgrading tier:', err)
-    }
-  }
+
 
   if (!isSignedIn) {
     return (
@@ -130,34 +123,29 @@ export default function EventsPage() {
                 Current Tier: <span className={`px-2 py-1 rounded text-xs font-medium ${getTierColor(userTier)}`}>
                   {getTierDisplayName(userTier)}
                 </span>
+                <span className="text-xs text-gray-400 ml-2">
+                  (Access: {tierOrder.slice(0, tierOrder.indexOf(userTier) + 1).map(t => getTierDisplayName(t)).join(' + ')})
+                </span>
               </span>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Tier Upgrade Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700">
-          <h2 className="text-xl font-semibold text-white mb-4">
-            Upgrade Your Tier (Demo)
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {tierOrder.map((tier) => (
-              <button
-                key={tier}
-                onClick={() => handleTierUpgrade(tier)}
-                disabled={tier === userTier}
-                className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-                  tier === userTier
-                    ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                    : `${getTierColor(tier)} hover:opacity-80 cursor-pointer`
-                }`}
-              >
-                {getTierDisplayName(tier)}
-              </button>
-            ))}
-          </div>
+
+
+      {/* Access Summary */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="bg-blue-900 border border-blue-700 rounded-lg p-4">
+          <h3 className="text-lg font-semibold text-blue-200 mb-2">
+            Your Access Level
+          </h3>
+          <p className="text-blue-100 text-sm">
+            As a <span className="font-medium">{getTierDisplayName(userTier)}</span> user, you can access: 
+            <span className="font-medium text-blue-200">
+              {' '}{tierOrder.slice(0, tierOrder.indexOf(userTier) + 1).map(t => getTierDisplayName(t)).join(' + ')}
+            </span> events
+          </p>
         </div>
       </div>
 

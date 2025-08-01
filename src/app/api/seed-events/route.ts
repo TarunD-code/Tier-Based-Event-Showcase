@@ -1,5 +1,16 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
+
+// Create a service role client for seeding (bypasses RLS)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://azvysnblmxoiylnnalgn.supabase.co'
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey!, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+})
 
 const sampleEvents = [
   // Free Events
@@ -72,7 +83,7 @@ export async function POST() {
     console.log('Starting database seeding...')
     
     // First, check if table exists by trying to select from it
-    const { error: checkError } = await supabase
+    const { error: checkError } = await supabaseAdmin
       .from('events')
       .select('id')
       .limit(1)
@@ -94,7 +105,7 @@ export async function POST() {
     console.log('Table exists, proceeding with seeding...')
 
     // Try to clear existing events (if any)
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await supabaseAdmin
       .from('events')
       .delete()
       .neq('id', '00000000-0000-0000-0000-000000000000')
@@ -112,7 +123,7 @@ export async function POST() {
 
     for (const event of sampleEvents) {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseAdmin
           .from('events')
           .insert(event)
           .select()
@@ -143,7 +154,7 @@ export async function POST() {
     }
 
     // Get final count
-    const { count } = await supabase
+    const { count } = await supabaseAdmin
       .from('events')
       .select('*', { count: 'exact', head: true })
 

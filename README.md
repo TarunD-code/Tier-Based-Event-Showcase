@@ -152,27 +152,46 @@ Open [http://localhost:3000](http://localhost:3000) to view the application.
 
 ## 🧪 Demo User Credentials
 
-For testing purposes, you can use these demo credentials:
+### Option 1: Create Demo Users in Clerk Dashboard
+
+To use the demo credentials below, you need to create these users in your Clerk dashboard:
+
+1. Go to [Clerk Dashboard](https://dashboard.clerk.com/)
+2. Navigate to your project → Users
+3. Click "Add user" and create these accounts:
 
 ### Free Tier User
 - **Email**: free@demo.com
-- **Password**: demo123
+- **Password**: DemoUser2025! (or reset in Clerk dashboard)
 - **Access**: Free events only
+- **Metadata**: `tier: "free"`
 
 ### Silver Tier User
 - **Email**: silver@demo.com
-- **Password**: demo123
+- **Password**: DemoUser2025! (or reset in Clerk dashboard)
 - **Access**: Free + Silver events
+- **Metadata**: `tier: "silver"`
 
 ### Gold Tier User
 - **Email**: gold@demo.com
-- **Password**: demo123
+- **Password**: DemoUser2025! (or reset in Clerk dashboard)
 - **Access**: Free + Silver + Gold events
+- **Metadata**: `tier: "gold"`
 
 ### Platinum Tier User
 - **Email**: platinum@demo.com
-- **Password**: demo123
+- **Password**: DemoUser2025! (or reset in Clerk dashboard)
 - **Access**: All events (Free + Silver + Gold + Platinum)
+- **Metadata**: `tier: "platinum"`
+
+**⚠️ Important**: The original password `demo123` was flagged as compromised. Use the new password or reset it in Clerk dashboard.
+
+### Option 2: Quick Test with New Account
+
+If you don't want to set up demo users:
+1. Click "Sign up" on the live application
+2. Create a new account with any email
+3. Use the tier upgrade simulation buttons to test different tiers
 
 ## 🎯 How It Works
 
