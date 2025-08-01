@@ -4,6 +4,7 @@ import { useUser } from '@clerk/nextjs'
 import { useEffect, useState } from 'react'
 import { supabase, Event, UserTier } from '@/lib/supabase'
 import Link from 'next/link'
+import Image from 'next/image'
 
 const tierOrder: UserTier[] = ['free', 'silver', 'gold', 'platinum']
 
@@ -181,9 +182,11 @@ export default function EventsPage() {
             {events.map((event) => (
               <div key={event.id} className="bg-gray-800 rounded-lg shadow-lg overflow-hidden border border-gray-700">
                 <div className="aspect-w-16 aspect-h-9 bg-gray-700">
-                  <img
+                  <Image
                     src={event.image_url || 'https://via.placeholder.com/400x225?text=Event+Image'}
                     alt={event.title}
+                    width={400}
+                    height={225}
                     className="w-full h-48 object-cover"
                   />
                 </div>

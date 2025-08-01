@@ -72,7 +72,7 @@ export async function POST() {
     console.log('Starting database seeding...')
     
     // First, check if table exists by trying to select from it
-    const { data: existingData, error: checkError } = await supabase
+    const { error: checkError } = await supabase
       .from('events')
       .select('id')
       .limit(1)

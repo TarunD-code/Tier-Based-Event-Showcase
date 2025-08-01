@@ -3,10 +3,17 @@
 import { useState } from 'react'
 import Link from 'next/link'
 
+interface SeedResult {
+  success?: boolean
+  message?: string
+  error?: string
+  events?: any[]
+}
+
 export default function SeedDB() {
   const [status, setStatus] = useState('Ready to seed database')
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<any>(null)
+  const [result, setResult] = useState<SeedResult | null>(null)
 
   const handleSeed = async () => {
     try {
