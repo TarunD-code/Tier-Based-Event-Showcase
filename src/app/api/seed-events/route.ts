@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-// Create a service role client for seeding (bypasses RLS)
+// Use the anon key but with a different approach
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://azvysnblmxoiylnnalgn.supabase.co'
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF6dnlzbmJsbXhvaXlsbm5hbGduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MDQxNDYsImV4cCI6MjA2OTQ4MDE0Nn0.5aYr1WyrT9FL5d6pHhKg6-E1IRSUfcw1ARSQW5AsCtE'
 
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey!, {
+const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false
@@ -83,7 +83,7 @@ export async function POST() {
     console.log('Starting database seeding...')
     
     // First, check if table exists by trying to select from it
-    const { error: checkError } = await supabaseAdmin
+    const { error: checkError } = await supabase
       .from('events')
       .select('id')
       .limit(1)
@@ -105,7 +105,7 @@ export async function POST() {
     console.log('Table exists, proceeding with seeding...')
 
     // Try to clear existing events (if any)
-    const { error: deleteError } = await supabaseAdmin
+    const { error: deleteError } = await supabase
       .from('events')
       .delete()
       .neq('id', '00000000-0000-0000-0000-000000000000')
@@ -123,7 +123,7 @@ export async function POST() {
 
     for (const event of sampleEvents) {
       try {
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await supabase
           .from('events')
           .insert(event)
           .select()
@@ -154,7 +154,7 @@ export async function POST() {
     }
 
     // Get final count
-    const { count } = await supabaseAdmin
+    const { count } = await supabase
       .from('events')
       .select('*', { count: 'exact', head: true })
 

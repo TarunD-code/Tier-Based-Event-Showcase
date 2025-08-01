@@ -39,10 +39,13 @@ export default function EventsPage() {
     if (isSignedIn && user) {
       // Get user tier from Clerk metadata
       const tier = user.publicMetadata.tier as UserTier || 'free'
+      console.log('User metadata:', user.publicMetadata)
+      console.log('Detected tier:', tier)
       setUserTier(tier)
       fetchEvents(tier)
     } else {
       // For demo purposes, show free events
+      console.log('User not signed in, defaulting to free tier')
       setUserTier('free')
       fetchEvents('free')
     }
@@ -68,11 +71,25 @@ export default function EventsPage() {
         .order('event_date', { ascending: true })
 
       if (error) {
-        throw error
+        console.error('Database error:', error)
+        // Fallback: fetch all events and filter client-side
+        const { data: allData, error: allError } = await supabase
+          .from('events')
+          .select('*')
+          .order('event_date', { ascending: true })
+        
+        if (allError) {
+          throw allError
+        }
+        
+        // Filter events client-side
+        const filteredEvents = allData?.filter(event => allowedTiers.includes(event.tier)) || []
+        console.log(`Fallback: Fetched ${allData?.length || 0} total events, filtered to ${filteredEvents.length} for tier ${tier}`)
+        setEvents(filteredEvents)
+      } else {
+        console.log(`Fetched ${data?.length || 0} events for tier ${tier}`)
+        setEvents(data || [])
       }
-
-      console.log(`Fetched ${data?.length || 0} events for tier ${tier}`)
-      setEvents(data || [])
     } catch (err) {
       console.error('Error fetching events:', err)
       setError('Failed to load events')
@@ -149,6 +166,11 @@ export default function EventsPage() {
               {' '}{tierOrder.slice(0, tierOrder.indexOf(userTier) + 1).map(t => getTierDisplayName(t)).join(' + ')}
             </span> events
           </p>
+          <div className="mt-3 pt-3 border-t border-blue-700">
+            <p className="text-blue-200 text-xs">
+              <strong>Debug Info:</strong> User tier: {userTier}, Allowed tiers: {tierOrder.slice(0, tierOrder.indexOf(userTier) + 1).join(', ')}
+            </p>
+          </div>
         </div>
       </div>
 
