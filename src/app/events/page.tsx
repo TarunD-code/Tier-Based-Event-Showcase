@@ -26,6 +26,8 @@ const getTierDisplayName = (tier: UserTier) => {
   return tier.charAt(0).toUpperCase() + tier.slice(1)
 }
 
+
+
 export default function EventsPage() {
   const { isSignedIn, user } = useUser()
   const [events, setEvents] = useState<Event[]>([])
@@ -58,6 +60,7 @@ export default function EventsPage() {
       
       console.log(`User tier: ${tier}, Allowed tiers: ${allowedTiers.join(', ')}`)
       
+      // Fetch only events the user can access
       const { data, error } = await supabase
         .from('events')
         .select('*')
@@ -194,13 +197,6 @@ export default function EventsPage() {
                   <p className="text-gray-300 text-sm line-clamp-3">
                     {event.description}
                   </p>
-                  {tierOrder.indexOf(event.tier) > tierOrder.indexOf(userTier) && (
-                    <div className="mt-4 p-3 bg-yellow-900 border border-yellow-700 rounded">
-                      <p className="text-sm text-yellow-200">
-                        💎 Upgrade to {getTierDisplayName(event.tier)} to access this event
-                      </p>
-                    </div>
-                  )}
                 </div>
               </div>
             ))}
