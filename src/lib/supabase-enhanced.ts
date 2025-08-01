@@ -21,11 +21,6 @@ export class EnhancedSupabaseClient {
     this.client = supabase
   }
 
-  // Public method to access the client for testing
-  getClient() {
-    return this.client
-  }
-
   // Set user tier for RLS policies
   setUserTier(tier: UserTier) {
     this.userTier = tier
@@ -35,12 +30,8 @@ export class EnhancedSupabaseClient {
   // Get events with proper tier filtering
   async getEvents(userTier: UserTier = this.userTier) {
     try {
-      // Try to set the user tier in the session for RLS policies
-      try {
-        await this.client.rpc('set_user_tier', { user_tier: userTier })
-      } catch (rpcError) {
-        console.log('RPC function not available, using client-side filtering')
-      }
+      // Set the user tier in the session for RLS policies
+      await this.client.rpc('set_user_tier', { user_tier: userTier })
       
       const { data, error } = await this.client
         .from('events')
@@ -113,24 +104,16 @@ export class EnhancedSupabaseClient {
   // Seed events (admin function)
   async seedEvents(events: Event[]) {
     try {
-      // Try to temporarily disable RLS for seeding
-      try {
-        await this.client.rpc('disable_rls_temporarily')
-      } catch (rpcError) {
-        console.log('RPC function not available, proceeding with normal insert')
-      }
+      // Temporarily disable RLS for seeding
+      await this.client.rpc('disable_rls_temporarily')
       
       const { data, error } = await this.client
         .from('events')
         .insert(events)
         .select()
 
-      // Try to re-enable RLS
-      try {
-        await this.client.rpc('enable_rls')
-      } catch (rpcError) {
-        console.log('RPC function not available for re-enabling RLS')
-      }
+      // Re-enable RLS
+      await this.client.rpc('enable_rls')
 
       return { data, error }
     } catch (err) {

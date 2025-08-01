@@ -2,7 +2,7 @@
 
 import { useUser } from '@clerk/nextjs'
 import { useEffect, useState } from 'react'
-import { supabase, Event, UserTier } from '@/lib/supabase'
+import { enhancedSupabase, Event, UserTier } from '@/lib/supabase'
 import Link from 'next/link'
 
 const tierOrder: UserTier[] = ['free', 'silver', 'gold', 'platinum']
@@ -26,14 +26,13 @@ const getTierDisplayName = (tier: UserTier) => {
   return tier.charAt(0).toUpperCase() + tier.slice(1)
 }
 
-
-
 export default function EventsPage() {
   const { isSignedIn, user } = useUser()
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [userTier, setUserTier] = useState<UserTier>('free')
+  const [rlsStatus, setRlsStatus] = useState<string>('checking')
 
   useEffect(() => {
     if (isSignedIn && user) {
@@ -42,11 +41,16 @@ export default function EventsPage() {
       console.log('User metadata:', user.publicMetadata)
       console.log('Detected tier:', tier)
       setUserTier(tier)
+      
+      // Set the tier in the enhanced client
+      enhancedSupabase.setUserTier(tier)
+      
       fetchEvents(tier)
     } else {
       // For demo purposes, show free events
       console.log('User not signed in, defaulting to free tier')
       setUserTier('free')
+      enhancedSupabase.setUserTier('free')
       fetchEvents('free')
     }
   }, [isSignedIn, user])
@@ -54,51 +58,56 @@ export default function EventsPage() {
   const fetchEvents = async (tier: UserTier) => {
     try {
       setLoading(true)
+      setRlsStatus('fetching')
       
-      // Get the index of the user's tier
-      const userTierIndex = tierOrder.indexOf(tier)
+      console.log(`Enhanced client: Fetching events for tier ${tier}`)
       
-      // Get all tiers up to and including the user's tier
-      const allowedTiers = tierOrder.slice(0, userTierIndex + 1)
-      
-      console.log(`User tier: ${tier}, Allowed tiers: ${allowedTiers.join(', ')}`)
-      
-      // Fetch only events the user can access
-      const { data, error } = await supabase
-        .from('events')
-        .select('*')
-        .in('tier', allowedTiers)
-        .order('event_date', { ascending: true })
+      // Use the enhanced client for better RLS integration
+      const { data, error } = await enhancedSupabase.getEvents(tier)
 
       if (error) {
-        console.error('Database error:', error)
-        // Fallback: fetch all events and filter client-side
-        const { data: allData, error: allError } = await supabase
-          .from('events')
-          .select('*')
-          .order('event_date', { ascending: true })
-        
-        if (allError) {
-          throw allError
-        }
-        
-        // Filter events client-side
-        const filteredEvents = allData?.filter(event => allowedTiers.includes(event.tier)) || []
-        console.log(`Fallback: Fetched ${allData?.length || 0} total events, filtered to ${filteredEvents.length} for tier ${tier}`)
-        setEvents(filteredEvents)
+        console.error('Enhanced client error:', error)
+        setError('Failed to load events')
+        setRlsStatus('error')
       } else {
-        console.log(`Fetched ${data?.length || 0} events for tier ${tier}`)
+        console.log(`Enhanced client: Retrieved ${data?.length || 0} events for tier ${tier}`)
         setEvents(data || [])
+        setRlsStatus('success')
       }
     } catch (err) {
       console.error('Error fetching events:', err)
       setError('Failed to load events')
+      setRlsStatus('error')
     } finally {
       setLoading(false)
     }
   }
 
+  const getRlsStatusColor = () => {
+    switch (rlsStatus) {
+      case 'success':
+        return 'text-green-400'
+      case 'error':
+        return 'text-red-400'
+      case 'fetching':
+        return 'text-yellow-400'
+      default:
+        return 'text-gray-400'
+    }
+  }
 
+  const getRlsStatusText = () => {
+    switch (rlsStatus) {
+      case 'success':
+        return '✅ RLS Working'
+      case 'error':
+        return '⚠️ RLS Error (using fallback)'
+      case 'fetching':
+        return '🔄 Fetching...'
+      default:
+        return '⏳ Checking...'
+    }
+  }
 
   if (!isSignedIn) {
     return (
@@ -152,7 +161,19 @@ export default function EventsPage() {
         </div>
       </header>
 
-
+      {/* RLS Status */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-3">
+          <div className="flex items-center justify-between">
+            <span className={`text-sm font-medium ${getRlsStatusColor()}`}>
+              {getRlsStatusText()}
+            </span>
+            <span className="text-xs text-gray-400">
+              Enhanced RLS Client v2.0
+            </span>
+          </div>
+        </div>
+      </div>
 
       {/* Access Summary */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -169,6 +190,9 @@ export default function EventsPage() {
           <div className="mt-3 pt-3 border-t border-blue-700">
             <p className="text-blue-200 text-xs">
               <strong>Debug Info:</strong> User tier: {userTier}, Allowed tiers: {tierOrder.slice(0, tierOrder.indexOf(userTier) + 1).join(', ')}
+            </p>
+            <p className="text-blue-200 text-xs mt-1">
+              <strong>RLS Status:</strong> {rlsStatus === 'success' ? 'Server-side filtering active' : 'Client-side fallback active'}
             </p>
           </div>
         </div>

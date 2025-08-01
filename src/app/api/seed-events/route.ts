@@ -1,18 +1,16 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { enhancedSupabase } from '@/lib/supabase'
 
-// Use the anon key but with a different approach
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://azvysnblmxoiylnnalgn.supabase.co'
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF6dnlzbmJsbXhvaXlsbm5hbGduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MDQxNDYsImV4cCI6MjA2OTQ4MDE0Nn0.5aYr1WyrT9FL5d6pHhKg6-E1IRSUfcw1ARSQW5AsCtE'
+// Type for seeding events (without id requirement)
+type SeedingEvent = {
+  title: string
+  description: string
+  event_date: string
+  image_url: string
+  tier: 'free' | 'silver' | 'gold' | 'platinum'
+}
 
-const supabase = createClient(supabaseUrl, supabaseKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-})
-
-const sampleEvents = [
+const sampleEvents: SeedingEvent[] = [
   // Free Events
   {
     title: "Community Meetup",
@@ -80,94 +78,48 @@ const sampleEvents = [
 
 export async function POST() {
   try {
-    console.log('Starting database seeding...')
+    console.log('Enhanced seeding: Starting database seeding...')
     
-    // First, check if table exists by trying to select from it
-    const { error: checkError } = await supabase
-      .from('events')
-      .select('id')
-      .limit(1)
-
-    if (checkError) {
-      console.error('Error checking table:', checkError)
-      
-      // If it's an RLS error, we'll try to insert anyway
-      if (checkError.message.includes('row-level security') || checkError.message.includes('Invalid API key')) {
-        console.log('RLS error detected, attempting to insert with anon key...')
-      } else {
-        return NextResponse.json({ 
-          error: 'Database table not found or inaccessible',
-          details: checkError.message 
-        }, { status: 500 })
-      }
-    }
-
-    console.log('Table exists, proceeding with seeding...')
-
-    // Try to clear existing events (if any)
-    const { error: deleteError } = await supabase
-      .from('events')
-      .delete()
-      .neq('id', '00000000-0000-0000-0000-000000000000')
-
-    if (deleteError) {
-      console.log('Could not clear existing events (RLS restriction), continuing...')
-    }
-
-    console.log('Attempting to insert new events...')
-
-    // Insert new events one by one to handle potential RLS issues
-    const insertedEvents = []
-    let successCount = 0
-    let errorCount = 0
-
-    for (const event of sampleEvents) {
-      try {
-        const { data, error } = await supabase
-          .from('events')
-          .insert(event)
-          .select()
-
-        if (error) {
-          console.error(`Error inserting event "${event.title}":`, error)
-          errorCount++
-        } else {
-          console.log(`Successfully inserted event "${event.title}"`)
-          insertedEvents.push(data[0])
-          successCount++
-        }
-      } catch (err) {
-        console.error(`Exception inserting event "${event.title}":`, err)
-        errorCount++
-      }
-    }
-
-    console.log(`Seeding completed: ${successCount} successful, ${errorCount} failed`)
-
-    if (successCount === 0) {
+    // Test connection first
+    const connectionTest = await enhancedSupabase.testConnection()
+    if (!connectionTest.success) {
       return NextResponse.json({ 
-        error: 'Failed to insert any events',
-        details: 'All insertions failed due to RLS policies or API key issues',
-        successCount,
-        errorCount
+        error: 'Database connection failed',
+        details: connectionTest.error
       }, { status: 500 })
     }
 
+    console.log('Enhanced seeding: Connection successful, proceeding with seeding...')
+
+    // Use the enhanced client for seeding
+    const { data, error } = await enhancedSupabase.seedEvents(sampleEvents as any)
+
+    if (error) {
+      console.error('Enhanced seeding error:', error)
+      return NextResponse.json({ 
+        error: 'Failed to seed events',
+        details: error instanceof Error ? error.message : 'Unknown error',
+        successCount: 0,
+        errorCount: sampleEvents.length
+      }, { status: 500 })
+    }
+
+    console.log(`Enhanced seeding: Successfully seeded ${data?.length || 0} events`)
+
     // Get final count
-    const { count } = await supabase
-      .from('events')
-      .select('*', { count: 'exact', head: true })
+    const finalTest = await enhancedSupabase.testConnection()
 
     return NextResponse.json({ 
       success: true,
-      message: `Database seeded successfully with ${successCount} events`, 
-      eventsCount: successCount,
-      totalCount: count || 0,
-      errorCount,
-      events: insertedEvents 
+      message: `Database seeded successfully with ${data?.length || 0} events`, 
+      eventsCount: data?.length || 0,
+      totalCount: finalTest.count || 0,
+      errorCount: 0,
+      events: data || [],
+      rlsStatus: 'Enhanced client used for seeding'
     })
   } catch (error) {
-    console.error('Unexpected error during seeding:', error)
+    console.error('Enhanced seeding: Unexpected error:', error)
     return NextResponse.json({ 
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
