@@ -2,12 +2,13 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { Event } from '@/lib/supabase'
 
 interface SeedResult {
   success?: boolean
   message?: string
   error?: string
-  events?: any[]
+  events?: Event[]
 }
 
 export default function SeedDB() {
